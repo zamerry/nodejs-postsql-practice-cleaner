@@ -73,13 +73,27 @@ class Controller {
 
     async getAll(req, res) {
         try {
+
+            const limit = req.query.limit || 5
+
+            const isLimitValid = Number(limit)
+            if (isNaN(isLimitValid)) {
+                return res.status(400).json({
+                    message: "введите число"
+                })
+            }
+
             const showTables = await db.query(
-                'select * from books'
+                'select b.title, b.publication_year, b.price, a.full_name from books b join authors a on a.id = b.author_id limit $1', [limit]
             )
+
+            const getBooksCount = await db.query('select count(title) from books')
 
             return res.status(200).json({
                 message: "запрос успешно обработан",
-                result: showTables.rows
+                result: showTables.rows,
+                limit: isLimitValid || 5,
+                all: Number(getBooksCount.rows[0].count)
             })
 
         } catch (e) {
@@ -124,6 +138,48 @@ class Controller {
             console.log(e)
             return res.status(500).json({
                 message: "скорее всего ошибка на сервере"
+            })
+        }
+    }
+
+    async searchTitle(req, res) {
+        try {
+
+            const {title} = req.body
+
+            const limit = req.query.limit || 5
+
+            const isLimitValid = Number(limit)
+            if (isNaN(isLimitValid)) {
+                return res.status(400).json({
+                    message: "введите число"
+                })
+            }
+
+            if (!title) {
+                return res.status(400).json({
+                    message: "введите название"
+                })
+            }
+
+            console.log(title)
+
+            const findBook = await db.query(
+                'select b.title, b.publication_year, b.price, a.full_name from books b join authors a on a.id = b.author_id where b.title ilike $1 limit $2', [`%${title}%`, limit]
+            )
+
+            const getBooksCount = await db.query('select count(title) from books')
+
+            return res.status(200).json({
+                message: "запрос успешно обработан",
+                result: findBook.rows,
+                limit: isLimitValid || 5,
+                all: Number(getBooksCount.rows[0].count)
+            })
+
+        } catch (e) {
+            return res.status(500).json({
+                message: `скорее всего ошибка на сервере`,
             })
         }
     }
@@ -229,6 +285,7 @@ class Controller {
             })
         }
     }
+
     // функция скидки
     async getDiscountOfId(req, res) {
         try {

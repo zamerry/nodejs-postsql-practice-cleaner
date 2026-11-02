@@ -9,6 +9,7 @@ router.get('/getAll', Controller.getAll)
 router.put('/update', Controller.update)
 router.delete('/delete/:id', Controller.delete)
 
+router.post('/searchTitle', Controller.searchTitle)
 
 router.get('/booksAndAuthors', Controller.booksAndAuthors)
 router.get('/getTopThreeBooksOfPrice', Controller.getTopThreeBooksOfPrice)
