@@ -16,7 +16,7 @@ class Controller {
             const isPriceValid = Number(price)
 
             if (isNaN(isPriceValid) || isNaN(isYearValid)) {
-                return res.status(200).json({
+                return res.status(400).json({
                     message: "поля price и publication_year должны быть числами"
                 })
             }
@@ -24,12 +24,6 @@ class Controller {
             const createNew = await db.query(
                 'insert into books (title, publication_year, price, author_id) values ($1,$2,$3,$4) returning *', [title, year, price, author_id]
             )
-
-            if (!createNew) {
-                return res.status(400).json({
-                    message: "ошибка при обработке запроса"
-                })
-            }
 
             return res.status(200).json({
                 message: "запрос успешно обработан",
@@ -65,12 +59,6 @@ class Controller {
                 })
             }
 
-            if (!showOneTable) {
-                return res.status(400).json({
-                    message: "ошибка при обработке запроса"
-                })
-            }
-
             return res.status(200).json({
                 message: "запрос успешно обработан",
                 result: showOneTable.rows[0]
@@ -88,12 +76,6 @@ class Controller {
             const showTables = await db.query(
                 'select * from books'
             )
-
-            if (!showTables) {
-                return res.status(400).json({
-                    message: "ошибка при обработке запроса"
-                })
-            }
 
             return res.status(200).json({
                 message: "запрос успешно обработан",
@@ -123,7 +105,7 @@ class Controller {
             const isPriceValid = Number(price)
 
             if (isNaN(isPriceValid) || isNaN(isYearValid)) {
-                return res.status(200).json({
+                return res.status(400).json({
                     message: "поля price и publication_year должны быть числами"
                 })
             }
@@ -132,12 +114,6 @@ class Controller {
                 'update books set title = $1, publication_year = $2, price = $3, author_id = $4 where id = $5 returning *',
                 [title, publication_year, price, author_id, id]
             )
-
-            if (!updateTable) {
-                return res.status(400).json({
-                    message: "ошибка при обработке запроса"
-                })
-            }
 
             return res.status(200).json({
                 message: "запрос успешно обработан",
@@ -168,12 +144,12 @@ class Controller {
             }
 
             try {
-                client.query('begin')
+                await client.query('begin')
 
                 await client.query('delete from loads where id = $1 returning *', [id])
                 deleteOriginColum = await client.query('delete from books where id = $1 returning *', [id])
 
-                client.query('commit')
+                await client.query('commit')
 
                 if (deleteOriginColum.rows.length === 0) {
                     return res.status(400).json({
@@ -190,20 +166,15 @@ class Controller {
                     await client.query('rollback')
                 }
                 return res.status(400).json({
-                    message: e
+                    message: "ошибка при закрытии транзакции"
                 })
             } finally {
                 client.release()
             }
 
-            return res.status(200).json({
-                message: "запрос успешно обработан",
-                result: deleteOriginColum.rows[0]
-            })
-
         } catch (e) {
             return res.status(500).json({
-                message: `скорее всего ошибка на сервере, текущая ошибка: ${e}`,
+                message: `скорее всего ошибка на сервере`,
             })
         }
     }
@@ -227,12 +198,6 @@ class Controller {
                          join readers r on r.id = l.reader_id
             `);
 
-            if (!createTable) {
-                return res.status(400).json({
-                    message: "ошибка при обработке запроса"
-                })
-            }
-
             return res.status(200).json({
                 message: "запрос обработан успешно",
                 result: createTable.rows
@@ -251,12 +216,6 @@ class Controller {
             const getTopPrice = await db.query(
                 'select * from books order by price desc limit 3'
             )
-
-            if (!getTopPrice) {
-                return res.status(400).json({
-                    message: "ошибка при обработке запроса"
-                })
-            }
 
             return res.status(200).json({
                 message: "запрос успешно обработан",
@@ -295,7 +254,7 @@ class Controller {
                 'select getDiscountOfId($1, $2) as "discountPrice"', [isIdValid, isPercentValid]
             );
 
-            if (getDiscount.rows[0].discountPrice === null) {
+            if (!getDiscount.rows[0] || getDiscount.rows[0].discountPrice === null) {
                 return res.status(400).json({
                     message: "по указанному id ничего не найдено"
                 })
